@@ -2691,6 +2691,7 @@ name = "onchain-indexer-poc"
 version = "0.1.0"
 dependencies = [
  "alloy",
+ "futures-util",
  "reqwest",
  "serde",
  "serde_json",
