@@ -8,10 +8,7 @@ use reqwest::Url;
 use std::{error::Error, str::FromStr, time::Duration};
 use tokio::time::Instant;
 
-use crate::{
-    services::postgres::{self, insert_raw_log},
-    utils::constants,
-};
+use crate::{services::postgres, utils::constants};
 
 pub async fn start(block_number: u64) -> Result<(), Box<dyn Error>> {
     let pg_client = postgres::setup().await?;
@@ -42,7 +39,7 @@ pub async fn start(block_number: u64) -> Result<(), Box<dyn Error>> {
         match logs.await {
             Ok(logs) => {
                 for log in logs {
-                    insert_raw_log(log, &pg_client).await;
+                    postgres::insert_raw_log(log, &pg_client).await;
                 }
             }
             Err(e) => {

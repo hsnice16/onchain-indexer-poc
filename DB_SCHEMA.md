@@ -18,3 +18,18 @@ CREATE TABLE raw_logs (
   PRIMARY KEY (block_number, log_index)
 );
 ```
+
+```sql
+CREATE TABLE processed_logs (
+  block_number BIGINT CHECK (block_number >= 0),
+  log_index BIGINT CHECK (log_index >= 0),
+  block_timestamp BIGINT CHECK (block_timestamp >= 0),
+  transaction_hash BYTEA,
+  "to" BYTEA,
+  "from" BYTEA,
+  "value" TEXT,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+
+  PRIMARY KEY (block_number, log_index)
+);
+```

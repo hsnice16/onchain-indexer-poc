@@ -96,3 +96,117 @@ pub async fn insert_raw_log(log: Log, client: &Client) {
         }
     }
 }
+
+pub async fn fetch_raw_log(
+    client: &Client,
+    block_number: i64,
+    log_index: i64,
+) -> Vec<tokio_postgres::Row> {
+    // IDEALLY we should do `>=` on private key
+    let query = "
+        SELECT address, data, topics, block_number, log_index, block_timestamp, transaction_hash
+        FROM raw_logs
+        WHERE (block_number, log_index) > ($1, $2) 
+            AND is_removed IS FALSE
+            AND is_processed IS FALSE
+        ORDER BY
+            block_number ASC, log_index ASC
+        LIMIT 10;
+    ";
+
+    match client.query(query, &[&block_number, &log_index]).await {
+        Ok(logs) => {
+            return logs;
+        }
+        Err(e) => {
+            println!(
+                "Failed to fetch block_number {} log_index {}. Error: {}",
+                block_number, log_index, e
+            );
+            Box::pin(fetch_raw_log(client, block_number, log_index)).await
+        }
+    };
+
+    Vec::new()
+}
+
+pub async fn update_raw_log(client: &Client, block_number: i64, log_index: i64) {
+    let query = "
+        UPDATE raw_logs
+        SET is_processed = true
+        WHERE block_number = $1
+        AND log_index = $2;
+    ";
+
+    match client.execute(query, &[&block_number, &log_index]).await {
+        Ok(_) => {}
+        Err(e) => {
+            println!(
+                "Failed to update block_number {} log_index {}. Error: {}",
+                block_number, log_index, e
+            );
+            Box::pin(update_raw_log(client, block_number, log_index)).await;
+        }
+    }
+}
+
+pub async fn insert_processed_logs(
+    client: &Client,
+    block_number: i64,
+    log_index: i64,
+    transaction_hash: Vec<u8>,
+    block_timestamp: i64,
+    to: Vec<u8>,
+    from: Vec<u8>,
+    value: &str,
+) {
+    let query = "
+        INSERT INTO processed_logs (block_number, log_index, block_timestamp, transaction_hash, \"to\", \"from\", \"value\") 
+        VALUES ($1, $2, $3, $4, $5, $6, $7)
+        ON CONFLICT (block_number, log_index)
+        DO UPDATE SET
+            block_number = EXCLUDED.block_number,
+            log_index = EXCLUDED.log_index,
+            block_timestamp = EXCLUDED.block_timestamp,
+            transaction_hash = EXCLUDED.transaction_hash,
+            \"to\" = EXCLUDED.to,
+            \"from\" = EXCLUDED.from,
+            \"value\" = EXCLUDED.value,
+            created_at = EXCLUDED.created_at;
+    ";
+
+    match client
+        .execute(
+            query,
+            &[
+                &block_number,
+                &log_index,
+                &block_timestamp,
+                &transaction_hash,
+                &to,
+                &from,
+                &value,
+            ],
+        )
+        .await
+    {
+        Ok(_) => {}
+        Err(e) => {
+            println!(
+                "Failed to insert processed block_number {} log_index {}. Error: {}",
+                block_number, log_index, e
+            );
+            Box::pin(insert_processed_logs(
+                client,
+                block_number,
+                log_index,
+                transaction_hash,
+                block_timestamp,
+                to,
+                from,
+                value,
+            ))
+            .await;
+        }
+    }
+}
