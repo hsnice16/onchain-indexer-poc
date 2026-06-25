@@ -12,3 +12,9 @@
 ## DB Schema
 
 Check DB Schema to get the idea of the table - [DB_SCHEMA](./DB_SCHEMA.md)
+
+---
+
+## Demo
+
+Check this post on X for the demo video - https://x.com/hsnice16/status/2070105366625718383
